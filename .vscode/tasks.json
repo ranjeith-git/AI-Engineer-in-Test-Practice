@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Git: Review & Push",
+      "detail": "Show what changed, then commit and push only after you type PUSH",
+      "type": "shell",
+      "command": "py",
+      "args": ["-3", "${workspaceFolder}\\scripts\\push-review.py"],
+      "linux": {
+        "command": "python3",
+        "args": ["${workspaceFolder}/scripts/push-review.py"]
+      },
+      "osx": {
+        "command": "python3",
+        "args": ["${workspaceFolder}/scripts/push-review.py"]
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": true,
+        "echo": false
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Git: Review & Push (dry run)",
+      "detail": "Preview exactly what would be pushed, without changing anything",
+      "type": "shell",
+      "command": "py",
+      "args": ["-3", "${workspaceFolder}\\scripts\\push-review.py", "--dry-run"],
+      "linux": {
+        "command": "python3",
+        "args": ["${workspaceFolder}/scripts/push-review.py", "--dry-run"]
+      },
+      "osx": {
+        "command": "python3",
+        "args": ["${workspaceFolder}/scripts/push-review.py", "--dry-run"]
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": true,
+        "echo": false
+      }
+    },
+    {
+      "label": "Git: Status",
+      "detail": "Short status plus how far ahead of origin this branch is",
+      "type": "shell",
+      "command": "git",
+      "args": ["status", "--short", "--branch"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false
+      }
+    }
+  ]
+}

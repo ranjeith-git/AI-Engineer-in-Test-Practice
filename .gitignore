@@ -1,2 +1,9 @@
 # Tooling state
 .commandcode/
+
+# Python noise (any chapter, any interpreter)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
