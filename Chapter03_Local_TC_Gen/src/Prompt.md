@@ -1,0 +1,7 @@
+I'll be sharing with you the Jira URL, Jira token, and Jira email ID. What you need to do is create me a simple app using Python in a frontend app. Create it using Streamlit, or choose the best practice you can for creating the entire app, but it should be in Python.
+
+The UI interface I'm expecting is similar to ChatGPT, where I can interact and get the output on the same page. For example, ask to create test cases for a Jira ID and click on a submit button or send button. You choose which will be relevant to keep as a submit or send button. Then you need to fetch the details of the given Jira ID and get me the results.
+
+Another screen will be where the Jira email ID and URL will be saved. Use the Ollama local model, Gemma 3, with 1 billion parameters, which is already installed in my local system. Use that local connection. It is already running locally right now.If the user does not want to use Ollama, as a fallback, you can use the GROQ also on the side by side in this case. GROQ is groq.com. I will share the token also, and the token will be available in the setting format in this case.
+
+It is simply a two-page application where you have to keep the UI simple, but efficient and user-friendly, like a credit app. This application is simple: the user asks for a test case to generate with the given Jira ID. The Jira ID will be automatically fetched from Jira, and with the Jira connection, you need to create test cases based on the template mentioned in the template folder. 
