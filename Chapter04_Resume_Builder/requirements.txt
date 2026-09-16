@@ -1,0 +1,8 @@
+# Requirements for Chapter 4 - Resume Builder
+# Used only by skills/resume-tailor/scripts/build_resume.py (DOCX + XLSX rendering).
+# The skill self-heals: it re-executes under <chapter>/.venv when these are missing
+# from the active interpreter.
+
+python-docx>=1.1.2
+openpyxl>=3.1.5
+pytest>=8.0

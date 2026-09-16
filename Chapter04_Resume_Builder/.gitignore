@@ -1,0 +1,19 @@
+# Tooling / local environment
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Personal data - never commit these
+input/master_resume.md
+input/jd/
+output/
+
+# Generated fixture output
+examples/output/
+
+# Editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
