@@ -242,4 +242,17 @@ def fetch_ticket(jira_url: str, email: str, api_token: str, issue_key: str,
             f"Response: {resp.text[:200]}"
         )
 
-    return resp.json()
+    try:
+        return resp.json()
+    except ValueError:
+        # A 200 with a non-JSON body means the request never reached the REST
+        # API — usually the URL is a board/issue browser URL rather than the
+        # site base (e.g. .../jira/software/projects/KEY/boards/1).
+        log.info("jira returned non-JSON for %s (HTTP %s, content-type=%s)",
+                 issue_key, resp.status_code, resp.headers.get("content-type"))
+        raise JiraConnectionError(
+            f"Jira returned a non-JSON response (HTTP {resp.status_code}) for "
+            f"{issue_key}. Check that the Jira URL in Settings is the site base "
+            f"(e.g. https://your-domain.atlassian.net) and not a board or issue "
+            f"URL."
+        ) from None

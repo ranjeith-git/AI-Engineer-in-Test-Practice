@@ -26,6 +26,8 @@ if str(_ROOT) not in sys.path:
 
 from core.config import load_settings  # noqa: E402
 from core.pipeline import PipelineError, run_generation  # noqa: E402
+from core.template_loader import load_template  # noqa: E402
+from pages.testcase_view import render_test_cases  # noqa: E402
 
 
 def _engine_badge(engine: str, model: str, latency_s: float) -> str:
@@ -33,7 +35,7 @@ def _engine_badge(engine: str, model: str, latency_s: float) -> str:
     return f"{icon} **Served by:** {engine} · `{model}` · {latency_s:.1f}s"
 
 
-def _render_message(msg: dict) -> None:
+def _render_message(msg: dict, index: int, headers: list[str]) -> None:
     """Draw one stored chat message."""
     role = msg.get("role", "assistant")
     with st.chat_message(role):
@@ -47,19 +49,34 @@ def _render_message(msg: dict) -> None:
         elif kind == "text":
             st.markdown(content)
         elif kind == "success":
-            st.markdown(content)
+            # Cards on the first render and on every rerun alike; only fall
+            # back to raw markdown when the response has no parseable table.
+            if not render_test_cases(content, headers, key=f"gen{index}"):
+                st.markdown(content)
+
+            # Validation flag: never silently show malformed output.
+            if msg.get("reasons"):
+                st.warning(
+                    "⚠️ Output did not fully match the template. Reasons:\n\n"
+                    + "\n".join(f"- {r}" for r in msg["reasons"])
+                )
+
             if msg.get("engine"):
                 st.caption(_engine_badge(msg["engine"], msg.get("model", ""),
                                          msg.get("latency_s", 0.0)))
+
             if msg.get("download"):
                 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 st.download_button(
                     "⬇️ Download .md",
-                    data=msg["content"].encode("utf-8"),
+                    data=content.encode("utf-8"),
                     file_name=f"test_cases_{msg.get('jira_key', 'ticket')}_{stamp}.md",
                     mime="text/markdown",
-                    key=f"dl_{id(msg)}",
+                    key=f"dl_{index}",
                 )
+
+            with st.expander("Raw markdown table"):
+                st.code(content, language="markdown")
         else:
             # plain user/assistant text
             st.markdown(content)
@@ -79,25 +96,15 @@ def _process(prompt: str) -> None:
             try:
                 result = run_generation(prompt)
             except PipelineError as exc:
-                st.error(str(exc))
                 st.session_state.setdefault("messages", []).append(
                     {"role": "assistant", "content": str(exc), "kind": "error"}
                 )
                 return
 
         gen = result.generation
-        st.markdown(gen.text)
 
-        # Validation flag: never silently show malformed output.
-        if not gen.validation.valid:
-            st.warning(
-                "⚠️ Output did not fully match the template. Reasons:\n\n"
-                + "\n".join(f"- {r}" for r in gen.validation.reasons)
-            )
-
-        st.caption(_engine_badge(gen.engine, gen.model, gen.latency_s))
-
-        # Persist the full assistant response (table + engine + download flag).
+        # Persist the full response; the rerun below redraws it from history so
+        # the cards look identical on every pass.
         entry: dict = {
             "role": "assistant",
             "content": gen.text,
@@ -106,6 +113,7 @@ def _process(prompt: str) -> None:
             "model": gen.model,
             "latency_s": gen.latency_s,
             "jira_key": result.jira_key,
+            "reasons": list(gen.validation.reasons),
         }
         if gen.validation.valid:
             entry["download"] = True
@@ -116,6 +124,10 @@ def render() -> None:
     st.title("Jira → Test Case Generator")
 
     settings = load_settings()
+    # The template supplies the card labels, so generated cards always read with
+    # the same column names the model was told to produce.
+    headers = load_template(settings.template_path).expected_headers
+
     if not settings.is_jira_configured():
         st.info(
             "Jira is not configured yet. Open **Settings** (sidebar) and save your "
@@ -136,8 +148,8 @@ def render() -> None:
         st.rerun()
 
     # Draw the full conversation history on every run.
-    for msg in st.session_state.messages:
-        _render_message(msg)
+    for index, msg in enumerate(st.session_state.messages):
+        _render_message(msg, index, headers)
 
     # Handle new input.
     if prompt := st.chat_input(

@@ -5,6 +5,7 @@ tmp_path file, so they are safe to run on a machine with real credentials.
 """
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -25,19 +26,24 @@ _ENV_KEYS = (
 
 
 @pytest.fixture
-def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """Point config at a throwaway .env so tests never read/write the real one.
 
-    load_dotenv(override=False) in load_settings() can have already populated
-    os.environ from the real src/.env in an earlier test, and load_settings
-    merges os.environ OVER the file. Clearing the env keys makes the tmp .env
-    authoritative for these tests.
+    load_settings() calls load_dotenv(..., override=False), which writes into
+    os.environ, and it merges os.environ OVER the file. Any value left behind
+    would therefore outrank the real src/.env in a later test. monkeypatch
+    cannot undo those writes — delenv records nothing when a key is already
+    absent — so snapshot the keys and restore them here.
     """
     env_file = tmp_path / ".env"
     monkeypatch.setattr(config, "ENV_PATH", env_file)
-    for key in _ENV_KEYS:
-        monkeypatch.delenv(key, raising=False)
-    return env_file
+    saved = {key: os.environ.pop(key, None) for key in _ENV_KEYS}
+    yield env_file
+    for key, value in saved.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
 def _load_via_env(isolated_env: Path, content: str):
