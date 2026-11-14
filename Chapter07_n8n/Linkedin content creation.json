@@ -1,0 +1,309 @@
+{
+  "name": "Linkedin content creation",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "acdb0b1a-702a-40cc-89a1-323a2bdc6e2b",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -1616,
+        -16
+      ],
+      "webhookId": "cb5de16b-cfd4-444c-a09a-0b926dfe7ad0"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Generate one fresh, specific LinkedIn post topic for a software testing and AI-in-QA audience. Avoid generic themes. Return the topic, a one-line angle, and the target reader.\n\nYou are a content strategist for a software testing community. Output only what the schema asks for.\n\n"
+        }
+      },
+      "id": "6afd9011-5608-459d-9279-d8890414b2af",
+      "name": "Topic Generator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1472,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.7-flash",
+        "options": {}
+      },
+      "id": "bd378dee-d041-48e8-8f35-5f4a873e1dc5",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -1584,
+        176
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"topic\": { \"type\": \"string\" },\n    \"angle\": { \"type\": \"string\" },\n    \"audience\": { \"type\": \"string\" }\n  },\n  \"required\": [\"topic\", \"angle\", \"audience\"]\n}"
+      },
+      "id": "45d405a4-5131-4bac-933a-e82d801166a1",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1424,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a Linkedin post. \ntopic: {{ $json.output.topic }}\nangle: {{ $json.output.angle }}\naudience: {{ $json.output.audience }}\n\nRules:\n- No contradictions\n- No emoji\n- Plain declarative sentence\n- Short paragraphs\n- One clear takeaway\n- 150 to 250 words\nAlso produce a post title and a one-sentence image prompt describing a clean technical illustration of this post.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You write a LinkedIn post for a software testing audience.  Return only the fields required by the schema."
+        }
+      },
+      "id": "ed9bd8ff-4cae-45fc-b737-94bf6e673be9",
+      "name": "COntent creator LIN",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1216,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "id": "403c4543-1496-47b1-8dec-7b90b1f6e86f",
+      "name": "Google Gemini Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -1264,
+        192
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Uj4b9Do4n6J8Xg7t",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"post_title\": { \"type\": \"string\" },\n    \"post_body\": { \"type\": \"string\" },\n    \"image_prompt\": { \"type\": \"string\" },\n    \"hashtags\": { \"type\": \"string\" }\n  },\n  \"required\": [\"post_title\", \"post_body\", \"image_prompt\", \"hashtags\"]\n}"
+      },
+      "id": "ac53cad6-bc27-447b-b787-2e947e8f7e05",
+      "name": "Structured Output Parser1",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1152,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/interactions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "YOUR_GOOGLE_API_KEY"
+            },
+            {
+              "name": "Api-Revision",
+              "value": "2026-05-20"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: \"gemini-3.1-flash-lite-image\", input: [{ type: \"text\", text: $json.output.image_prompt }] }) }}",
+        "options": {}
+      },
+      "id": "846d2716-52d4-4a44-bbe6-7f9a8855e0db",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -928,
+        -16
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Uj4b9Do4n6J8Xg7t",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.2,
+      "position": [
+        -704,
+        -16
+      ],
+      "id": "267580ea-df4e-4a58-a5f4-fde57c60fdf4",
+      "name": "Convert to File"
+    }
+  ],
+  "pinData": {
+    "Topic Generator": [
+      {
+        "json": {
+          "output": {
+            "topic": "Verification Debt: Auditing 'Silent Passes' in LLM-Generated E2E Test Suites",
+            "angle": "AI test generators excel at writing code that passes CI, but QA teams are spending more time debugging hallucinated assertions and silent passes than they saved during test creation.",
+            "audience": "Lead SDETs, QA Managers, and Test Automation Engineers integrating AI coding agents into CI/CD pipelines."
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "COntent creator LIN": [
+      {
+        "json": {
+          "output": {
+            "post_title": "Verification Debt: Auditing Silent Passes in LLM-Generated Test Suites",
+            "post_body": "AI test generation tools are rapidly transforming how engineering teams build End-to-End test suites. These tools write code quickly and ensure scripts execute without throwing syntax errors in CI pipelines.\n\nHowever, a passing test run does not guarantee actual test validity. AI coding agents frequently generate weak or hallucinated assertions. A test script may execute its full user workflow while asserting trivial UI conditions or skipping strict data validation entirely.\n\nThis imbalance introduces verification debt into your test automation architecture. QA teams save time during initial test creation, but spend double that time debugging silent passes and investigating escaped bugs during release cycles. When a critical defect bypasses an AI-generated suite because an assertion was ineffective, initial speed gains disappear.\n\nTo eliminate verification debt, QA leads must balance test generation velocity with assertion auditing. Implementing mutation testing and strict code review rules for AI-generated scripts ensures that tests fail when the application breaks. Test creation speed is only valuable if assertion quality remains uncompromised.",
+            "image_prompt": "A clean technical vector illustration showing a CI/CD build pipeline dashboard with green checkmark indicators, with a highlighted code snippet panel showing empty or weak test assertions.",
+            "hashtags": "#SoftwareTesting #QA #TestAutomation #SDET #DevOps"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Topic Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic Generator": {
+      "main": [
+        [
+          {
+            "node": "COntent creator LIN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Topic Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Topic Generator",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COntent creator LIN": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "COntent creator LIN",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "COntent creator LIN",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e83da2c8-4abd-4c79-a7dd-31922dcdc3e4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e256d7b88ce734e9904a2b4cc99deab26b4147714d8b9e56f2a9ef8ccbaa85b1"
+  },
+  "nodeGroups": [],
+  "id": "F6453X6QNlC9EQ79",
+  "tags": []
+}

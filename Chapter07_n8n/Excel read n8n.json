@@ -1,0 +1,162 @@
+{
+  "name": "Excel read n8n",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "dffe9760-be92-41f5-a557-37f39248c3ad",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -448,
+        -16
+      ],
+      "webhookId": "adaa7ded-1a35-4c8f-82e3-0fa3bb6a30c6"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an Excel reader agent. When I ask a question about some of the topics or details mentioned in the Excel (to which I have given you access), you pull those details and give them to me depending on the topic I ask about. The workbook (Salesforce Key.xlsx) has three sheets: Key Areas, Definitions and CPQ. Use the read_sheet_rows tool with the relevant sheet name, and read more than one sheet if needed."
+        }
+      },
+      "id": "ae4e211e-e4bb-4595-ba55-47578d63b33c",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -224,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "c76b4467-5d38-4876-b991-3e0c599edc21",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        144
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "29aaa16c-1ed1-48b5-8579-c22d1c891f23",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -96,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "readRows",
+        "workbook": {
+          "__rl": true,
+          "mode": "id",
+          "value": "60FDFFB15CA3650A!s702278235c834c869bad3606f0e664ea"
+        },
+        "worksheet": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('worksheet', 'Sheet name to read. One of: Key Areas, Definitions, CPQ') }}"
+        },
+        "options": {}
+      },
+      "id": "69e311a1-00e3-4cf8-8d51-6d430d9b190e",
+      "name": "read_sheet_rows",
+      "type": "n8n-nodes-base.microsoftExcelTool",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        144
+      ],
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "AsrsJgFgXsY50r7V",
+          "name": "Microsoft Excel account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "read_sheet_rows": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a2d477bc-bef2-42f9-916a-533497e8988b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e256d7b88ce734e9904a2b4cc99deab26b4147714d8b9e56f2a9ef8ccbaa85b1"
+  },
+  "nodeGroups": [],
+  "id": "HCCehODLQPz3eX61",
+  "tags": []
+}

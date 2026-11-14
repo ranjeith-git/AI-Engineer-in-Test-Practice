@@ -1,0 +1,256 @@
+{
+  "name": "Timely Gmail updates via Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,12,18 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1360,
+        48
+      ],
+      "id": "4092d12c-0f43-4d7b-b7f2-dda2fc76ef92",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 25,
+        "simple": false,
+        "filters": {
+          "q": "=in:inbox after:{{ $json.afterEpoch }} before:{{ $json.beforeEpoch }} -from:n8n.io (interview OR schedule OR payment OR paid OR debited OR credited OR transaction OR receipt OR invoice OR LinkedIn OR \"job alert\" OR offer OR Swiggy OR Zomato OR Amazon)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        48
+      ],
+      "id": "d5ffff19-319b-431b-9fe8-fba5855fa1d9",
+      "name": "Get many messages",
+      "webhookId": "db794357-235b-416e-9db2-cf5d59b9f158",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pkr0IzihAo5hG2TK",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const emails = $input.all().map(i => {\n  const j = i.json;\n  const from = (j.from && j.from.text) || j.From || j.from || '';\n  return {\n    from: String(from).slice(0, 80),\n    subject: j.subject || j.Subject || '',\n    body: String(j.text || j.snippet || '').replace(/\\s+/g, ' ').slice(0, 400)\n  };\n});\nreturn [{ json: { emails, count: emails.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        48
+      ],
+      "id": "c18bb7b3-9a9f-4294-a619-b27257af4f23",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Emails received today: {{ JSON.stringify($json.emails) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an email triage assistant. You receive a JSON list of today's emails.\nReturn ONLY valid JSON, no markdown, no commentary:\n{\n  \"transactions\": [{\"type\": \"debit | credit\", \"amount\": 0, \"currency\": \"INR\",\n    \"merchant\": \"string\", \"category\": \"food | shopping | investment | bank | bills | other\",\n    \"subject\": \"string\", \"summary\": \"one short sentence\"}],\n  \"jobs\": [{\"company\": \"string\", \"role\": \"string\", \"source\": \"LinkedIn | Naukri | Company | Other\",\n    \"subject\": \"string\", \"summary\": \"one short sentence\", \"action\": \"deadline or action, else empty\",\n    \"priority\": \"High | Medium | Low\"}],\n  \"linkedin\": [{\"subject\": \"string\", \"companies\": [\"string\"], \"roles\": [\"string\"],\n    \"summary\": \"one short sentence\"}],\n  \"important\": [{\"from\": \"string\", \"subject\": \"string\", \"summary\": \"one short sentence\",\n    \"reason\": \"why it matters\"}],\n  \"other\": [{\"from\": \"string\", \"subject\": \"string\", \"summary\": \"one short sentence\"}]\n}\nRules:\n- transactions: every debit/credit alert from banks, UPI, cards, Swiggy, Zomato, Amazon, Cashfree,\n  brokers, etc. \"amount\" must be a plain number (1500 not \"Rs. 1,500.00\"). Money received = credit;\n  money spent = debit.\n- jobs: direct recruiter or company mails (Infosys, TCS, etc.), interview invites, offers, assessments.\n  Never put LinkedIn job alerts here.\n- linkedin: only LinkedIn job-alert mails. List every company name and role visible in the mail.\n- important: anything time-sensitive you were not told about: OTP-free security alerts, deadlines,\n  exam/visa/legal, bills due. Interview and offer mails also go here AND in jobs.\n- Omit any item where the company, role or merchant is unknown. Never invent names or amounts.\n- Skip newsletters and promotions. Use [] for empty categories.\n- In \"important\" and \"other\", \"from\" must be the clean display name of the sender only\n  (e.g. \"Keerthana R\", \"n8n.io\", \"HDFC Life\"), never an email address. If the mail is via\n  LinkedIn/Naukri, put that platform in a separate \"via\" field.\n- Drop connection notifications, newsletters, promotions, and course offers entirely.\n- Any LinkedIn job alert or recommendation goes in \"linkedin\" with company names listed."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -576,
+        48
+      ],
+      "id": "a3ceba46-3dc5-492b-8760-e6b72722dc4a",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "maxTokensToSample": 4000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        256
+      ],
+      "id": "4faecd3a-4b6b-4339-b576-4bdc9840b0a5",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "ErHgv0bGVXJ76z8W",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = String($input.first().json.text || $input.first().json.output || '');\nlet d;\ntry {\n  const s = raw.indexOf('{'); const e = raw.lastIndexOf('}');\n  d = JSON.parse(raw.slice(s, e + 1).replace(/,\\s*([\\]}])/g, '$1'));\n} catch (e) {\n  return [{ json: { message: 'Digest parse failed: ' + e.message + '\\n\\n' + raw.slice(-400) } }];\n}\n\nconst label = $('Window').first().json.label;\nconst esc = function (s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };\nconst b = function (s) { return '<b>' + esc(s) + '</b>'; };\nconst num = function (v) { return Number(String(v).replace(/[^0-9.]/g, '')) || 0; };\nconst inr = function (n) { return 'INR ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 }); };\nconst cap = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; };\nconst prIcon = { High: '🔴', Medium: '🟡', Low: '🟢' };\n\nconst tx = d.transactions || [];\nlet debit = 0, credit = 0;\ntx.forEach(function (t) { if (t.type === 'credit') credit += num(t.amount); else debit += num(t.amount); });\nconst txIcon = function (t) { return t.type === 'credit' ? '🟢' : (num(t.amount) >= 1000 ? '🔴' : '🟠'); };\n\nlet msg = '📬 ' + b('Inbox digest · ' + label) + '\\n';\n\nif (tx.length) {\n  msg += '\\n💳 ' + b('TRANSACTIONS (' + tx.length + ')') + '\\n';\n  msg += '📉 Debited: ' + b(inr(debit)) + '\\n📈 Credited: ' + b(inr(credit)) + '\\n\\n';\n  tx.sort(function (a, c) { return num(c.amount) - num(a.amount); }).forEach(function (t) {\n    msg += txIcon(t) + ' ' + (t.type === 'credit' ? 'Received ' : 'Spent ') + inr(num(t.amount)) +\n      ' · ' + b(t.merchant) + ' (' + esc(cap(t.category)) + ')\\n   ' + esc(t.summary) + '\\n';\n  });\n}\n\nconst jobs = d.jobs || [];\nif (jobs.length) {\n  msg += '\\n💼 ' + b('JOBS & INTERVIEWS (' + jobs.length + ')') + '\\n';\n  jobs.forEach(function (j) {\n    msg += (prIcon[j.priority] || '⚪') + ' ' + b(j.company) + ' · ' + esc(j.role) + '\\n   ' + esc(j.summary) +\n      (j.action ? '\\n   ➜ ' + esc(j.action) : '') + '\\n';\n  });\n}\n\nconst li = d.linkedin || [];\nif (li.length) {\n  msg += '\\n🔗 ' + b('LINKEDIN ALERTS (' + li.length + ')') + '\\n';\n  li.forEach(function (l) {\n    const comps = (l.companies || []).filter(Boolean).map(b).join(', ');\n    const roles = (l.roles || []).filter(Boolean).map(esc).join(', ');\n    if (!comps && !roles) return;\n    msg += '• ' + (roles || 'Roles') + '\\n   Companies: ' + (comps || 'not listed') + '\\n';\n  });\n}\n\nconst who = function (i) { return b(i.from) + (i.via ? ' via ' + esc(i.via) : ''); };\nconst imp = d.important || [];\nif (imp.length) {\n  msg += '\\n⚠️ ' + b('IMPORTANT (' + imp.length + ')') + '\\n';\n  imp.forEach(function (i) { msg += '🔴 ' + who(i) + ' · ' + esc(i.subject) + '\\n   ' + esc(i.summary) + '\\n'; });\n}\n\nconst oth = d.other || [];\nif (oth.length) {\n  msg += '\\n📌 ' + b('OTHER (' + oth.length + ')') + '\\n';\n  oth.forEach(function (o) { msg += '• ' + who(o) + ': ' + esc(o.summary) + '\\n'; });\n}\n\nif (!tx.length && !jobs.length && !li.length && !imp.length && !oth.length) msg += '\\nNothing important in this window.';\nreturn [{ json: { message: msg.slice(0, 4000) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        48
+      ],
+      "id": "865dd66f-57f7-4cc6-81c0-b15c620799c0",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "chatId": "1098048215",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -32,
+        48
+      ],
+      "id": "3349836d-c705-49f4-9deb-969f65bcaeab",
+      "name": "Send a text message",
+      "webhookId": "e2da134f-e306-4801-8324-6147cd5778c9",
+      "credentials": {
+        "telegramApi": {
+          "id": "uoyZa8hfIbKVnEfN",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = $now;\nconst h = now.hour;\nlet end, start, label;\nif (h < 9) {\n  end = now.set({ hour: 6, minute: 0, second: 0, millisecond: 0 });\n  start = end.minus({ hours: 12 }); label = 'Morning (6 PM – 6 AM)';\n} else if (h < 15) {\n  end = now.set({ hour: 12, minute: 0, second: 0, millisecond: 0 });\n  start = end.minus({ hours: 6 }); label = 'Midday (6 AM – 12 PM)';\n} else {\n  end = now.set({ hour: 18, minute: 0, second: 0, millisecond: 0 });\n  start = end.minus({ hours: 6 }); label = 'Evening (12 PM – 6 PM)';\n}\nreturn [{ json: {\n  label: label,\n  afterEpoch: Math.floor(start.toSeconds()),\n  beforeEpoch: Math.floor(end.toSeconds())\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        48
+      ],
+      "id": "187b16d9-9ae7-44ac-8254-beb3fb8a13ae",
+      "name": "Window"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "4d7f5538-2797-4475-aa0d-19ccc0f78512",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e256d7b88ce734e9904a2b4cc99deab26b4147714d8b9e56f2a9ef8ccbaa85b1"
+  },
+  "nodeGroups": [],
+  "id": "jApjPOb34rHLkQc4",
+  "tags": []
+}
