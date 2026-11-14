@@ -12,3 +12,4 @@
     5. pip install langflow
     6. langflow run
 
+rename 
